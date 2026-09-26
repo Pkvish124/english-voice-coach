@@ -1,0 +1,63 @@
+import streamlit as st
+from groq import Groq
+
+# Page Config
+st.set_page_config(page_title="AI Spoken English Coach", page_icon="🎙️")
+
+st.title("🎙️ AI Spoken English Coach")
+st.write("Aap niche Hindi/Hinglish me bolein ya likhein, AI aapki mistake batayega aur grammatically correct karke bolkar jawab dega.")
+
+# Sidebar API Key
+api_key = st.sidebar.text_input("Groq API Key (Free):", type="password")
+
+if api_key:
+    client = Groq(api_key=api_key)
+
+    user_speech = st.text_input(
+        "Mic button tap karke bolein ya yahan likhein:", 
+        placeholder="Jaise: Aaj mai market gaya tha par dukaan band tha..."
+    )
+
+    if st.button("Analyze & Speak Back"):
+        if user_speech:
+            prompt = f"""
+            User input: "{user_speech}"
+
+            Your Role: Friendly Spoken English Coach.
+            Tasks:
+            1. Correct Sentence: Provide the natural, grammatically correct English version for daily speaking.
+            2. Explanation: In simple Hindi/Hinglish, briefly explain what was wrong or unnatural in their input.
+            3. Conversational Response: Respond to them naturally in English to keep the practice going.
+
+            Formatting Rules:
+            Write in clean Markdown. At the bottom, include a block exactly like this:
+            [VOICE_TEXT: Write only the Corrected English Sentence + 1 line conversational reply here]
+            """
+
+            with st.spinner("AI thinking..."):
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": "You are a spoken English trainer for native Hindi speakers."},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                
+                output_text = response.choices[0].message.content
+                st.markdown(output_text)
+                
+                if "[VOICE_TEXT:" in output_text:
+                    voice_content = output_text.split("[VOICE_TEXT:")[1].split("]")[0].strip()
+                    js_code = f"""
+                    <script>
+                        var msg = new SpeechSynthesisUtterance("{voice_content}");
+                        msg.lang = "en-US";
+                        msg.rate = 0.9;
+                        window.speechSynthesis.speak(msg);
+                    </script>
+                    """
+                    st.components.v1.html(js_code, height=0)
+        else:
+            st.warning("Kripya pehle kuch bolein ya likhein.")
+else:
+    st.info("Pehle Sidebar me apni Free Groq API Key daalein.")
