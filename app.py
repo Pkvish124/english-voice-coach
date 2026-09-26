@@ -7,8 +7,11 @@ st.set_page_config(page_title="AI Spoken English Coach", page_icon="🎙️")
 st.title("🎙️ AI Spoken English Coach")
 st.write("Aap niche Hindi/Hinglish me bolein ya likhein, AI aapki mistake batayega aur grammatically correct karke bolkar jawab dega.")
 
-# Sidebar API Key
-api_key = st.sidebar.text_input("Groq API Key (Free):", type="password")
+# Pehle Streamlit Secrets se key check karein, agar wahan na mile toh Sidebar se lein
+api_key = st.secrets.get("GROQ_API_KEY", None)
+
+if not api_key:
+    api_key = st.sidebar.text_input("Groq API Key (Free):", type="password")
 
 if api_key:
     client = Groq(api_key=api_key)
@@ -35,29 +38,32 @@ if api_key:
             """
 
             with st.spinner("AI thinking..."):
-                response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[
-                        {"role": "system", "content": "You are a spoken English trainer for native Hindi speakers."},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-                
-                output_text = response.choices[0].message.content
-                st.markdown(output_text)
-                
-                if "[VOICE_TEXT:" in output_text:
-                    voice_content = output_text.split("[VOICE_TEXT:")[1].split("]")[0].strip()
-                    js_code = f"""
-                    <script>
-                        var msg = new SpeechSynthesisUtterance("{voice_content}");
-                        msg.lang = "en-US";
-                        msg.rate = 0.9;
-                        window.speechSynthesis.speak(msg);
-                    </script>
-                    """
-                    st.components.v1.html(js_code, height=0)
+                try:
+                    response = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": "You are a spoken English trainer for native Hindi speakers."},
+                            {"role": "user", "content": prompt}
+                        ]
+                    )
+                    
+                    output_text = response.choices[0].message.content
+                    st.markdown(output_text)
+                    
+                    if "[VOICE_TEXT:" in output_text:
+                        voice_content = output_text.split("[VOICE_TEXT:")[1].split("]")[0].strip()
+                        js_code = f"""
+                        <script>
+                            var msg = new SpeechSynthesisUtterance("{voice_content}");
+                            msg.lang = "en-US";
+                            msg.rate = 0.9;
+                            window.speechSynthesis.speak(msg);
+                        </script>
+                        """
+                        st.components.v1.html(js_code, height=0)
+                except Exception as e:
+                    st.error(f"Error: {e}")
         else:
             st.warning("Kripya pehle kuch bolein ya likhein.")
 else:
-    st.info("Pehle Sidebar me apni Free Groq API Key daalein.")
+    st.info("Pehle Sidebar me apni Free Groq API Key daalein ya Streamlit Secrets me set karein.")
